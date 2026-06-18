@@ -1,0 +1,588 @@
+// Personal Platform - Comprehensive Prisma Schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// AUTHENTICATION & USERS
+// ============================================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String
+  password      String
+  role          String    @default("admin") // admin, editor, viewer
+  avatar        String?
+  isActive      Boolean   @default(true)
+  lastLoginAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  auditLogs     AuditLog[]
+  sessions      Session[]
+
+  @@map("users")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  token        String   @unique
+  refreshToken String   @unique
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  userAgent    String?
+  ipAddress    String?
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  id         String   @id @default(cuid())
+  token      String   @unique
+  email      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  @@map("verification_tokens")
+}
+
+// ============================================
+// SITE SETTINGS
+// ============================================
+
+model SiteSetting {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String   // JSON string for complex values
+  type        String   @default("text") // text, json, number, boolean, color
+  group       String   @default("general") // general, seo, appearance, contact, social
+  label       String?
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("site_settings")
+}
+
+// ============================================
+// DYNAMIC SECTIONS & WIDGETS
+// ============================================
+
+model Section {
+  id            String    @id @default(cuid())
+  type          String    // hero, about, skills, projects, services, testimonials, experience, education, faq, contact, blog, custom
+  title         String
+  subtitle      String?
+  description   String?
+  titleEn       String?   // English title
+  subtitleEn    String?   // English subtitle
+  descriptionEn String?   // English description
+  config        String    @default("{}") // JSON: layout style, columns, animation, etc.
+  content       String    @default("{}") // JSON: section-specific content
+  contentEn     String?   // JSON: English content
+  order         Int       @default(0)
+  isVisible     Boolean   @default(true)
+  layout        String    @default("default") // default, grid, masonry, carousel, timeline, cards, split, fullwidth, sidebar, tabs
+  animation     String    @default("fade") // fade, slide, zoom, flip, rotate, bounce
+  bgType        String    @default("default") // default, gradient, image, video, pattern, particle
+  bgValue       String?
+  customClass   String?
+  parentId      String?   // for nested sections
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  items         SectionItem[]
+
+  @@map("sections")
+}
+
+model SectionItem {
+  id            String   @id @default(cuid())
+  sectionId     String
+  type          String   // card, image, text, skill, project, service, testimonial, experience, faq, link, video, icon
+  title         String?
+  subtitle      String?
+  description   String?
+  titleEn       String?  // English title
+  subtitleEn    String?  // English subtitle
+  descriptionEn String?  // English description
+  content       String   @default("{}") // JSON: item-specific content
+  imageUrl      String?
+  icon          String?  // Lucide icon name
+  link          String?
+  linkText      String?
+  order         Int      @default(0)
+  isVisible     Boolean  @default(true)
+  config        String   @default("{}") // JSON: item config (color, size, etc.)
+  configEn      String?  // JSON: English item config
+  tags          String?  // JSON array of tags
+  startDate     String?
+  endDate       String?
+  rating        Float?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  section       Section  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  @@map("section_items")
+}
+
+// ============================================
+// PROJECTS
+// ============================================
+
+model Project {
+  id            String        @id @default(cuid())
+  title         String
+  slug          String        @unique
+  description   String
+  content       String?       // Rich text / markdown
+  titleEn       String?       // English title
+  descriptionEn String?       // English description
+  contentEn     String?       // English content
+  category      String?
+  status        String        @default("published") // draft, published, archived
+  featured      Boolean       @default(false)
+  startDate     String?
+  endDate       String?
+  clientName    String?
+  demoUrl       String?
+  repoUrl       String?
+  technologies  String?       // JSON array
+  order         Int           @default(0)
+  isVisible     Boolean       @default(true)
+  seoTitle      String?
+  seoDesc       String?
+  ogImage       String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  images        ProjectImage[]
+
+  @@map("projects")
+}
+
+model ProjectImage {
+  id          String   @id @default(cuid())
+  projectId   String
+  url         String
+  alt         String?
+  caption     String?
+  order       Int      @default(0)
+  isFeatured  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("project_images")
+}
+
+// ============================================
+// SERVICES
+// ============================================
+
+model Service {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  description String
+  content     String?  // Rich text
+  icon        String?  // Lucide icon name
+  imageUrl    String?
+  features    String?  // JSON array
+  price       String?
+  order       Int      @default(0)
+  isVisible   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("services")
+}
+
+// ============================================
+// SKILLS
+// ============================================
+
+model Skill {
+  id         String   @id @default(cuid())
+  name       String
+  slug       String   @unique
+  category   String   @default("general") // frontend, backend, devops, design, mobile, database, tools
+  level      Int      @default(50) // 0-100
+  icon       String?  // Simple icon slug
+  iconUrl    String?
+  color      String?
+  order      Int      @default(0)
+  isVisible  Boolean  @default(true)
+  featured   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("skills")
+}
+
+// ============================================
+// TESTIMONIALS
+// ============================================
+
+model Testimonial {
+  id          String   @id @default(cuid())
+  name        String
+  position    String?
+  company     String?
+  content     String
+  rating      Int      @default(5)
+  avatarUrl   String?
+  link        String?
+  order       Int      @default(0)
+  isVisible   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("testimonials")
+}
+
+// ============================================
+// EXPERIENCE
+// ============================================
+
+model Experience {
+  id          String   @id @default(cuid())
+  title       String
+  company     String
+  location    String?
+  startDate   String
+  endDate     String?  // null = current
+  description String?
+  content     String?  // Rich text details
+  type        String   @default("work") // work, freelance, internship, volunteer
+  order       Int      @default(0)
+  isVisible   Boolean  @default(true)
+  technologies String? // JSON array
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("experiences")
+}
+
+// ============================================
+// EDUCATION
+// ============================================
+
+model Education {
+  id          String   @id @default(cuid())
+  degree      String
+  institution String
+  location    String?
+  startDate   String
+  endDate     String?
+  description String?
+  grade       String?
+  certificate String? // URL
+  order       Int      @default(0)
+  isVisible   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("education")
+}
+
+// ============================================
+// BLOG
+// ============================================
+
+model BlogPost {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  excerpt     String?
+  content     String   // Markdown
+  coverImage  String?
+  category    String?
+  tags        String?  // JSON array
+  status      String   @default("draft") // draft, published, archived
+  featured    Boolean  @default(false)
+  readTime    Int?
+  seoTitle    String?
+  seoDesc     String?
+  ogImage     String?
+  publishedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("blog_posts")
+}
+
+// ============================================
+// FAQ
+// ============================================
+
+model FAQ {
+  id        String   @id @default(cuid())
+  question  String
+  answer    String
+  category  String?
+  order     Int      @default(0)
+  isVisible Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("faqs")
+}
+
+// ============================================
+// MEDIA LIBRARY
+// ============================================
+
+model Media {
+  id          String   @id @default(cuid())
+  filename    String
+  originalName String
+  mimeType    String
+  size        Int
+  url         String
+  thumbnailUrl String?
+  alt         String?
+  caption     String?
+  folder      String   @default("general")
+  width       Int?
+  height      Int?
+  metadata    String?  // JSON: additional metadata
+  uploadedBy  String?
+  createdAt   DateTime @default(now())
+
+  @@map("media")
+}
+
+// ============================================
+// NAVIGATION
+// ============================================
+
+model Navigation {
+  id        String        @id @default(cuid())
+  label     String
+  labelEn   String?       // English label
+  url       String?
+  icon      String?
+  order     Int           @default(0)
+  isVisible Boolean       @default(true)
+  parentId  String?
+  target    String        @default("_self") // _self, _blank
+  type      String        @default("main") // main, footer, sidebar, mobile
+
+  children  Navigation[]  @relation("NavChildren")
+  parent    Navigation?   @relation("NavChildren", fields: [parentId], references: [id])
+
+  @@map("navigations")
+}
+
+// ============================================
+// SOCIAL LINKS
+// ============================================
+
+model SocialLink {
+  id        String   @id @default(cuid())
+  platform  String   // github, linkedin, twitter, etc.
+  url       String
+  icon      String?  // Lucide icon name
+  order     Int      @default(0)
+  isVisible Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("social_links")
+}
+
+// ============================================
+// CONTACT MESSAGES
+// ============================================
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  subject   String?
+  message   String
+  phone     String?
+  isRead    Boolean  @default(false)
+  isReplied Boolean  @default(false)
+  repliedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("contact_messages")
+}
+
+// ============================================
+// THEME & APPEARANCE
+// ============================================
+
+model Theme {
+  id          String   @id @default(cuid())
+  name        String
+  isDefault   Boolean  @default(false)
+  isActive    Boolean  @default(false)
+  mode        String   @default("light") // light, dark, system
+  colors      String   @default("{}") // JSON: all color tokens
+  fonts       String   @default("{}") // JSON: font configuration
+  spacing     String   @default("{}") // JSON: spacing config
+  borderRadius String  @default("0.625rem")
+  customCSS   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("themes")
+}
+
+// ============================================
+// FONT MANAGEMENT
+// ============================================
+
+model Font {
+  id         String   @id @default(cuid())
+  name       String
+  family     String
+  source     String   @default("google") // google, custom, system
+  url        String?
+  weights    String?  // JSON array of weights
+  subsets    String?  // JSON array
+  category   String   @default("sans") // sans, serif, mono, display, arabic
+  isActive   Boolean  @default(true)
+  usage      String   @default("body") // body, heading, code, custom
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("fonts")
+}
+
+// ============================================
+// SEO SETTINGS
+// ============================================
+
+model SEOSetting {
+  id          String   @id @default(cuid())
+  page        String   @unique // home, about, projects, blog, contact, global
+  title       String?
+  description String?
+  keywords    String?  // JSON array
+  ogTitle     String?
+  ogDesc      String?
+  ogImage     String?
+  ogType      String?
+  canonical   String?
+  robots      String?  // index, follow, noindex, nofollow
+  structured  String?  // JSON-LD structured data
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("seo_settings")
+}
+
+// ============================================
+// ANALYTICS
+// ============================================
+
+model AnalyticsEvent {
+  id          String   @id @default(cuid())
+  eventType   String   // page_view, click, session_start, session_end, custom
+  page        String?
+  referrer    String?
+  userAgent   String?
+  ipAddress   String?
+  country     String?
+  city        String?
+  browser     String?
+  os          String?
+  device      String?  // desktop, mobile, tablet
+  sessionId   String?
+  duration    Int?     // session duration in seconds
+  metadata    String?  // JSON: additional data
+  createdAt   DateTime @default(now())
+
+  @@map("analytics_events")
+}
+
+// ============================================
+// AUDIT LOGS
+// ============================================
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  action      String   // login, logout, create, update, delete, upload, settings_change, security_event
+  entity      String?  // model name
+  entityId    String?
+  details     String?  // JSON: what changed
+  ipAddress   String?
+  userAgent   String?
+  severity    String   @default("info") // info, warning, error, critical
+  createdAt   DateTime @default(now())
+
+  user        User?    @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}
+
+// ============================================
+// NEWSLETTER SUBSCRIBERS
+// ============================================
+
+model NewsletterSubscriber {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  isActive  Boolean  @default(true)
+  source    String   @default("website")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("newsletter_subscribers")
+}
+
+// ============================================
+// WIDGET TEMPLATES
+// ============================================
+
+model WidgetTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  type        String   // hero, stats, timeline, grid, carousel, tabs, accordion, masonry, kanban, featured
+  category    String   @default("general") // general, portfolio, business, creative, minimal
+  thumbnail   String?
+  config      String   @default("{}") // JSON: template configuration
+  sections    String   @default("[]") // JSON: array of section configs
+  isPremium   Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("widget_templates")
+}
+
+// ============================================
+// RESUME / CV
+// ============================================
+
+model Resume {
+  id          String   @id @default(cuid())
+  title       String
+  summary     String?
+  fileUrl     String?
+  isVisible   Boolean  @default(true)
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("resumes")
+}
