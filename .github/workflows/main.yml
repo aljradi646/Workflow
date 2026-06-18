@@ -1,0 +1,32 @@
+name: Import Project
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install gdown
+        run: pip install gdown
+
+      - name: Download from Google Drive
+        run: gdown 1csNSMjgN3K9AaZ9_MY0uRkroFsIwitfZ -O project.zip
+
+      - name: Extract Archive
+        run: unzip -o project.zip
+
+      - name: Commit Changes
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add .
+          git commit -m "Import project" || echo "No changes"
+          git push
