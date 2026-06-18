@@ -14,19 +14,32 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
-          persist-credentials: true
+          fetch-depth: 0
 
-      - name: Install gdown
-        run: pip install gdown
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unzip
+          pip install gdown
 
-      - name: Download Project
+      - name: Download Project from Google Drive
         run: |
           gdown 1csNSMjgN3K9AaZ9_MY0uRkroFsIwitfZ -O project.zip
 
-      - name: Extract
-        run: unzip -o project.zip
+      - name: Verify file
+        run: |
+          file project.zip
+          ls -lh project.zip
 
-      - name: Commit & Push
+      - name: Extract Archive
+        run: |
+          unzip -o project.zip
+
+      - name: Clean zip file
+        run: |
+          rm -f project.zip
+
+      - name: Commit Changes
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
@@ -35,6 +48,14 @@ jobs:
 
           git commit -m "Import project" || echo "No changes"
 
+      - name: Setup remote safely
+        run: |
+          git remote remove origin || true
+          git remote add origin https://github.com/${{ github.repository }}.git
+
+      - name: Push changes
+        run: |
+          git push origin HEAD:main
           git branch
           git remote -v
 
